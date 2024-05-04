@@ -1,6 +1,15 @@
+using DotNetEnv;
+using MongoDB.Driver;
+
+Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+var connectionString = Environment.GetEnvironmentVariable("MONGO_URI")!;
+
+builder.Services.AddScoped(_ => new MongoClient(connectionString));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

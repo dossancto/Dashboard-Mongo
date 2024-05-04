@@ -9,8 +9,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.03'
+          memory: 128M
     ports:
       - "27017:27017"
     volumes:

@@ -24,28 +24,13 @@ public class AddEventMessageRequest
 
 [ApiController]
 [Route("[controller]")]
-public class WeatherForecastController : ControllerBase
+public class WeatherForecastController(MongoClient _client) : ControllerBase
 {
-    private static readonly string[] Summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
-    private readonly ILogger<WeatherForecastController> _logger;
-
-    public WeatherForecastController(ILogger<WeatherForecastController> logger)
-    {
-        _logger = logger;
-    }
 
     [HttpPost("add")]
     public IActionResult Post(AddEventMessageRequest dto)
     {
-        var connectionString = "mongodb://admin:examplepassword@localhost:27017/";
-
-        var client = new MongoClient(connectionString);
-
-        var db = ApplicationDbContext.Create(client.GetDatabase("dashboard"));
+        var db = ApplicationDbContext.Create(_client.GetDatabase("dashboard"));
 
         var movie = db.MessageEvents.Add(dto.ToModel());
 
@@ -57,19 +42,15 @@ public class WeatherForecastController : ControllerBase
     [HttpPost("seed")]
     public IActionResult Seed()
     {
-        var connectionString = "mongodb://admin:examplepassword@localhost:27017/";
-
-        var client = new MongoClient(connectionString);
-
-        var db = ApplicationDbContext.Create(client.GetDatabase("dashboard"));
+        var db = ApplicationDbContext.Create(_client.GetDatabase("dashboard"));
 
         var startDate = DateTime.UtcNow;
 
         var events = new MessageEvent[50];
 
-        foreach (var i in Enumerable.Range(1, 100_000))
+        foreach (var i in Enumerable.Range(1, 100))
         {
-            if (i % 500 == 0)
+            if (i % 5 == 0)
             {
                 startDate = startDate.AddDays(1);
                 Console.WriteLine("Good morning princess");
@@ -92,6 +73,15 @@ public class WeatherForecastController : ControllerBase
                 db.SaveChanges();
             }
 
+            var remainItens = events[..(i % 50)];
+
+            if (i == 100 && remainItens.Any())
+            {
+                db.MessageEvents.AddRange(events);
+
+                db.SaveChanges();
+            }
+
         }
 
         return Ok("IMPORTED");
@@ -100,11 +90,7 @@ public class WeatherForecastController : ControllerBase
     [HttpGet(Name = "GetWeatherForecast")]
     public IActionResult Get(DateTime from, DateTime to)
     {
-        var connectionString = "mongodb://admin:examplepassword@localhost:27017/";
-
-        var client = new MongoClient(connectionString);
-
-        var db = ApplicationDbContext.Create(client.GetDatabase("dashboard"));
+        var db = ApplicationDbContext.Create(_client.GetDatabase("dashboard"));
 
         var movie = db.MessageEvents
           .Select(x => new { x.Cost, x.EventType, x.GeneratedAt })
@@ -123,8 +109,15 @@ public class WeatherForecastController : ControllerBase
                             Count = y.Count()
                         })
           })
-          ;
+        ;
 
-        return Ok(movie);
+        return Ok(new
+        {
+            Data = movie,
+            Stats = new
+            {
+                TotalRecords = movie.Sum(x => x.Data.Sum(y => y.Count))
+            }
+        });
     }
 }
